@@ -1,26 +1,28 @@
+# ---- Base
 FROM python:3.11-slim
 
-# Chrome kurulumu aynı kalacak...
-RUN apt-get update && apt-get install -y \
-    wget \
-    gnupg \
-    unzip \
-    curl \
-    ca-certificates \
-    && wget -q -O - https://dl.google.com/linux/linux_signing_key.pub | gpg --dearmor -o /usr/share/keyrings/google-chrome-keyring.gpg \
-    && echo "deb [arch=amd64 signed-by=/usr/share/keyrings/google-chrome-keyring.gpg] http://dl.google.com/linux/chrome/deb/ stable main" > /etc/apt/sources.list.d/google-chrome.list \
-    && apt-get update \
-    && apt-get install -y google-chrome-stable \
-    && apt-get clean \
+# Sistem bağımlılıkları (Chromium + chromedriver + fontlar)
+RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y \
+    chromium \
+    chromium-driver \
+    fonts-liberation \
+    libnss3 \
+    libxss1 \
+    libasound2 \
+    libatk-bridge2.0-0 \
+    libgtk-3-0 \
     && rm -rf /var/lib/apt/lists/*
 
+ENV CHROME_BIN=/usr/bin/chromium
+ENV CHROMEDRIVER=/usr/bin/chromedriver
+ENV PYTHONUNBUFFERED=1
+
+# ---- App
 WORKDIR /app
-
 COPY requirements.txt .
-RUN pip install -r requirements.txt
-
+RUN pip install --no-cache-dir -r requirements.txt
 COPY . .
 
-EXPOSE 8000
-
-CMD ["sh", "-c", "uvicorn fastapi_server:app --host 0.0.0.0 --port ${PORT:-8000}"]
+# Uvicorn ile FastAPI servisini başlat
+# Not: fastapi_server.py içinde FastAPI nesnesi 'app' olmalı
+CMD ["uvicorn", "fastapi_server:app", "--host", "0.0.0.0", "--port", "$PORT"]
